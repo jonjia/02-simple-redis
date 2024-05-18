@@ -1,10 +1,34 @@
-use super::{extract_args, validate_command, CommandExecutor, SAdd, SIsMember};
+use super::{extract_args, validate_command, CommandExecutor, SAdd, SIsMember, SMembers};
 use crate::{cmd::CommandError, RespArray, RespFrame};
 
 impl CommandExecutor for SAdd {
     fn execute(self, backend: &crate::Backend) -> RespFrame {
         let ret = backend.sadd(&self.key, &self.values);
         RespFrame::BulkString(format!("(integer) {}", ret).into())
+    }
+}
+
+impl CommandExecutor for SMembers {
+    fn execute(self, backend: &crate::Backend) -> RespFrame {
+        let set = backend.smembers(&self.key);
+        match set {
+            Some(set) => {
+                let mut data = Vec::with_capacity(set.len());
+                for v in set.iter() {
+                    let key = v.key().to_owned();
+                    data.push(key);
+                }
+                if self.sort {
+                    data.sort();
+                }
+                let ret = data
+                    .into_iter()
+                    .map(|k| RespFrame::BulkString(k.into()))
+                    .collect::<Vec<RespFrame>>();
+                RespArray::new(ret).into()
+            }
+            None => RespArray::new([]).into(),
+        }
     }
 }
 
@@ -39,6 +63,22 @@ impl TryFrom<RespArray> for SAdd {
                 };
                 Ok(ret)
             }
+            _ => Err(CommandError::InvalidArgument("Invalid key".to_string())),
+        }
+    }
+}
+
+impl TryFrom<RespArray> for SMembers {
+    type Error = CommandError;
+    fn try_from(value: RespArray) -> Result<Self, Self::Error> {
+        validate_command(&value, &["smembers"], 1)?;
+
+        let mut args = extract_args(value, 1)?.into_iter();
+        match args.next() {
+            Some(RespFrame::BulkString(key)) => Ok(SMembers {
+                key: String::from_utf8(key.0)?,
+                sort: false,
+            }),
             _ => Err(CommandError::InvalidArgument("Invalid key".to_string())),
         }
     }
@@ -85,6 +125,18 @@ mod tests {
     }
 
     #[test]
+    fn test_smembers_from_resp_array() -> Result<()> {
+        let mut buf = BytesMut::new();
+        buf.extend_from_slice(b"*2\r\n$8\r\nsmembers\r\n$3\r\nset\r\n");
+
+        let frame = RespArray::decode(&mut buf)?;
+        let result = SMembers::try_from(frame)?;
+        assert_eq!(result.key, "set");
+        assert!(!result.sort);
+        Ok(())
+    }
+
+    #[test]
     fn test_sismember_from_resp_array() -> Result<()> {
         let mut buf = BytesMut::new();
         buf.extend_from_slice(b"*3\r\n$9\r\nsismember\r\n$3\r\nset\r\n$5\r\nhello\r\n");
@@ -98,7 +150,7 @@ mod tests {
     }
 
     #[test]
-    fn test_sadd_sismember_command() -> Result<()> {
+    fn test_sadd_sismember_smembers_command() -> Result<()> {
         let backend = Backend::new();
         let cmd = SAdd {
             key: "set".to_string(),
@@ -113,6 +165,21 @@ mod tests {
         };
         let result = cmd.execute(&backend);
         assert_eq!(result, RespFrame::BulkString("(integer) 1".into()));
+
+        let cmd = SMembers {
+            key: "set".to_string(),
+            sort: true,
+        };
+
+        let result = cmd.execute(&backend);
+        assert_eq!(
+            result,
+            RespArray::new(vec![
+                RespFrame::BulkString("hello".into()),
+                RespFrame::BulkString("world".into())
+            ])
+            .into()
+        );
 
         let cmd = SIsMember {
             key: "set".to_string(),

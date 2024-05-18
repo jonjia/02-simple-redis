@@ -76,6 +76,10 @@ impl Backend {
         self.hmap.get(key).map(|v| v.clone())
     }
 
+    pub fn smembers(&self, key: &str) -> Option<DashSet<String>> {
+        self.set_map.get(key).map(|v| v.clone())
+    }
+
     pub fn sadd(&self, key: &str, values: &[String]) -> i64 {
         let set = self.set_map.entry(key.to_string()).or_default();
         values

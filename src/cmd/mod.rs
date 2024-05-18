@@ -43,6 +43,7 @@ pub enum Command {
     Echo(Echo),
 
     SAdd(SAdd),
+    SMembers(SMembers),
     SIsMember(SIsMember),
 
     // unrecognized command
@@ -105,6 +106,12 @@ pub struct SIsMember {
     value: String,
 }
 
+#[derive(Debug)]
+pub struct SMembers {
+    key: String,
+    sort: bool,
+}
+
 impl TryFrom<RespFrame> for Command {
     type Error = CommandError;
     fn try_from(v: RespFrame) -> Result<Self, Self::Error> {
@@ -129,6 +136,7 @@ impl TryFrom<RespArray> for Command {
                 b"hset" => Ok(HSet::try_from(v)?.into()),
                 b"hgetall" => Ok(HGetAll::try_from(v)?.into()),
                 b"sadd" => Ok(SAdd::try_from(v)?.into()),
+                b"smembers" => Ok(SMembers::try_from(v)?.into()),
                 b"sismember" => Ok(SIsMember::try_from(v)?.into()),
                 b"echo" => Ok(Echo::try_from(v)?.into()),
                 _ => Ok(Unrecognized.into()),
