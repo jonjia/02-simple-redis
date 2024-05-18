@@ -8,11 +8,10 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
     let addr = "0.0.0.0:6379";
-    info!("Simple-Redis-Server is listening on: {}", addr);
+    info!("Simple-Redis-Server is listening on {}", addr);
     let listener = TcpListener::bind(addr).await?;
 
     let backend = Backend::new();
-
     loop {
         let (stream, raddr) = listener.accept().await?;
         info!("Accepted connection from: {}", raddr);
@@ -20,10 +19,10 @@ async fn main() -> Result<()> {
         tokio::spawn(async move {
             match network::stream_handler(stream, cloned_backend).await {
                 Ok(_) => {
-                    info!("connection from {} exited", raddr);
+                    info!("Connection from {} exited", raddr);
                 }
                 Err(e) => {
-                    warn!("handle error for {}: {:?}", raddr, e)
+                    warn!("handle error for {}: {:?}", raddr, e);
                 }
             }
         });

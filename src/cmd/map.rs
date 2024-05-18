@@ -56,7 +56,7 @@ impl TryFrom<RespArray> for Set {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::RespDecode;
+    use crate::{Backend, RespDecode};
     use anyhow::Result;
     use bytes::BytesMut;
 
@@ -83,6 +83,25 @@ mod tests {
         let result: Set = frame.try_into()?;
         assert_eq!(result.key, "hello");
         assert_eq!(result.value, RespFrame::BulkString(b"world".into()));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_set_get_command() -> Result<()> {
+        let backend = Backend::new();
+        let cmd = Set {
+            key: "hello".to_string(),
+            value: RespFrame::BulkString(b"world".into()),
+        };
+        let result = cmd.execute(&backend);
+        assert_eq!(result, RESP_OK.clone());
+
+        let cmd = Get {
+            key: "hello".to_string(),
+        };
+        let result = cmd.execute(&backend);
+        assert_eq!(result, RespFrame::BulkString(b"world".into()));
 
         Ok(())
     }

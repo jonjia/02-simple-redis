@@ -36,6 +36,8 @@ pub enum Command {
     HGet(HGet),
     HSet(HSet),
     HGetAll(HGetAll),
+
+    // unrecognized command
     Unrecognized(Unrecognized),
 }
 
@@ -75,7 +77,7 @@ impl TryFrom<RespFrame> for Command {
     type Error = CommandError;
     fn try_from(v: RespFrame) -> Result<Self, Self::Error> {
         match v {
-            RespFrame::Array(value) => value.try_into(),
+            RespFrame::Array(array) => array.try_into(),
             _ => Err(CommandError::InvalidCommand(
                 "Command must be an Array".to_string(),
             )),
@@ -144,4 +146,29 @@ fn validate_command(
 
 fn extract_args(value: RespArray, start: usize) -> Result<Vec<RespFrame>, CommandError> {
     Ok(value.0.into_iter().skip(start).collect::<Vec<RespFrame>>())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{RespDecode, RespNull};
+    use anyhow::Result;
+    use bytes::BytesMut;
+
+    #[test]
+    fn test_command() -> Result<()> {
+        let mut buf = BytesMut::new();
+        buf.extend_from_slice(b"*2\r\n$3\r\nget\r\n$5\r\nhello\r\n");
+
+        let frame = RespArray::decode(&mut buf)?;
+
+        let cmd: Command = frame.try_into()?;
+
+        let backend = Backend::new();
+
+        let ret = cmd.execute(&backend);
+        assert_eq!(ret, RespFrame::Null(RespNull));
+
+        Ok(())
+    }
 }
