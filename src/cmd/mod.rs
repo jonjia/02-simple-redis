@@ -1,6 +1,7 @@
 mod echo;
 mod hmap;
 mod map;
+mod set;
 
 use crate::{Backend, RespArray, RespError, RespFrame, SimpleString};
 use enum_dispatch::enum_dispatch;
@@ -40,6 +41,9 @@ pub enum Command {
     HSet(HSet),
     HGetAll(HGetAll),
     Echo(Echo),
+
+    SAdd(SAdd),
+    SIsMember(SIsMember),
 
     // unrecognized command
     Unrecognized(Unrecognized),
@@ -89,6 +93,18 @@ pub struct Echo {
     value: String,
 }
 
+#[derive(Debug)]
+pub struct SAdd {
+    key: String,
+    values: Vec<String>,
+}
+
+#[derive(Debug)]
+pub struct SIsMember {
+    key: String,
+    value: String,
+}
+
 impl TryFrom<RespFrame> for Command {
     type Error = CommandError;
     fn try_from(v: RespFrame) -> Result<Self, Self::Error> {
@@ -112,6 +128,8 @@ impl TryFrom<RespArray> for Command {
                 b"hmget" => Ok(HMGet::try_from(v)?.into()),
                 b"hset" => Ok(HSet::try_from(v)?.into()),
                 b"hgetall" => Ok(HGetAll::try_from(v)?.into()),
+                b"sadd" => Ok(SAdd::try_from(v)?.into()),
+                b"sismember" => Ok(SIsMember::try_from(v)?.into()),
                 b"echo" => Ok(Echo::try_from(v)?.into()),
                 _ => Ok(Unrecognized.into()),
             },
