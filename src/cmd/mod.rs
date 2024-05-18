@@ -36,6 +36,7 @@ pub enum Command {
     Get(Get),
     Set(Set),
     HGet(HGet),
+    HMGet(HMGet),
     HSet(HSet),
     HGetAll(HGetAll),
     Echo(Echo),
@@ -59,6 +60,12 @@ pub struct Set {
 pub struct HGet {
     key: String,
     field: String,
+}
+
+#[derive(Debug)]
+pub struct HMGet {
+    key: String,
+    fields: Vec<String>,
 }
 
 #[derive(Debug)]
@@ -102,6 +109,7 @@ impl TryFrom<RespArray> for Command {
                 b"get" => Ok(Get::try_from(v)?.into()),
                 b"set" => Ok(Set::try_from(v)?.into()),
                 b"hget" => Ok(HGet::try_from(v)?.into()),
+                b"hmget" => Ok(HMGet::try_from(v)?.into()),
                 b"hset" => Ok(HSet::try_from(v)?.into()),
                 b"hgetall" => Ok(HGetAll::try_from(v)?.into()),
                 b"echo" => Ok(Echo::try_from(v)?.into()),

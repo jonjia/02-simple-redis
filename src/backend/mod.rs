@@ -54,6 +54,17 @@ impl Backend {
             .and_then(|v| v.get(field).map(|v| v.value().clone()))
     }
 
+    pub fn hmget(&self, key: &str, fields: &[String]) -> Vec<Option<RespFrame>> {
+        let hmap = self.hmap.get(key);
+        match hmap {
+            Some(hmap) => fields
+                .iter()
+                .map(|field| hmap.get(field).map(|v| v.value().clone()))
+                .collect(),
+            None => vec![None; fields.len()],
+        }
+    }
+
     pub fn hset(&self, key: String, field: String, value: RespFrame) {
         let hmap = self.hmap.entry(key).or_default();
         hmap.insert(field, value);
