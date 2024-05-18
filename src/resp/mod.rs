@@ -15,14 +15,8 @@ use enum_dispatch::enum_dispatch;
 use thiserror::Error;
 
 pub use self::{
-    array::{RespArray, RespNullArray},
-    bulk_string::{BulkString, RespNullBulkString},
-    frame::RespFrame,
-    map::RespMap,
-    null::RespNull,
-    set::RespSet,
-    simple_error::SimpleError,
-    simple_string::SimpleString,
+    array::RespArray, bulk_string::BulkString, frame::RespFrame, map::RespMap, null::RespNull,
+    set::RespSet, simple_error::SimpleError, simple_string::SimpleString,
 };
 
 const BUF_CAP: usize = 4096;
@@ -114,6 +108,10 @@ fn find_crlf(buf: &[u8], nth: usize) -> Option<usize> {
 fn parse_length(buf: &[u8], prefix: &str) -> Result<(usize, usize), RespError> {
     let end = extract_simple_frame_data(buf, prefix)?;
     let s = String::from_utf8_lossy(&buf[prefix.len()..end]);
+    if s == "-1" {
+        return Ok((end, 0));
+    }
+
     Ok((end, s.parse()?))
 }
 
